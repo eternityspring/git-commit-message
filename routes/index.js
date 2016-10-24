@@ -5,7 +5,27 @@ var simpleGit = require('simple-git')(config.projectPath);
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+  simpleGit.log(["--since='1 day ago'","--author="+config.gitName],function(err,log){
+    config.hidePrototype.forEach(function (item) {
+      delete log[item];
+    });
+    if(config.filterMerge){
+      log.all.forEach(function (item,i) {
+        if(/Merge/.test(item.message)){
+          log.all.splice(i,1);
+        }
+      });
+    }
+    log.daily = log.all.map(function (item,i) {
+      return i+1+'.'+item.message;
+    });
+    delete log.all;
+    req.log = log;
+    next();
+  });
+});
+router.get('/', function(req, res) {
+  res.json(req.log);
 });
 router.get('/git', function(req, res, next) {
   simpleGit.log(["--since='1 day ago'","--author="+config.gitName],function(err,log){
@@ -13,9 +33,9 @@ router.get('/git', function(req, res, next) {
       delete log[item];
     });
     if(config.filterMerge){
-      log.all = log.all.map(function (item) {
-        if(!/Merge/.test(item.message)){
-          return item;
+      log.all.forEach(function (item,i) {
+        if(/Merge/.test(item.message)){
+          log.all.splice(i,1);
         }
       });
     }
